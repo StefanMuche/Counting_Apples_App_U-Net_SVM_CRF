@@ -33,7 +33,7 @@ class FruitSegmentationDataset(Dataset):
             image = self.transform(image)
             mask = self.transform(mask)
 
-        return image
+        return image,mask
 
 def conv(in_channels, out_channels):
     return nn.Sequential(
@@ -184,8 +184,8 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = UNet(pretrained=True, out_channels=1).to(device)
     criterion = UnetLoss
-    optimizer = optim.Adam(model.parameters(), lr=1e-2)
-    n_epochs = 15
+    optimizer = optim.Adam(model.parameters(), lr=5e-3)
+    n_epochs = 20
     best_loss = np.inf
     val_loss_history = []
     val_acc_history = []
@@ -221,12 +221,12 @@ if __name__ == '__main__':
         
         if val_loss < best_loss:
             best_loss = val_loss
-            save_path = "D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/modele/unet_model.pth"
+            save_path = "D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/modele/unet_model_0.05.pth"
             torch.save(model.state_dict(), save_path)     
-            np.save('train_loss_history.npy', np.array(train_loss_history))
-            np.save('val_loss_history.npy', np.array(val_loss_history))   
-            np.save('train_acc_history.npy', np.array(train_acc_history))
-            np.save('val_acc_history.npy', np.array(val_acc_history))   
+            np.save('train_loss_history_0.05.npy', np.array(train_loss_history))
+            np.save('val_loss_history_0.05.npy', np.array(val_loss_history))   
+            np.save('train_acc_history_0.05.npy', np.array(train_acc_history))
+            np.save('val_acc_history_0.05.npy', np.array(val_acc_history))   
 
 
 
