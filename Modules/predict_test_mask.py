@@ -6,7 +6,7 @@ import torch
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from PIL import Image
-from unet_pytorch import UNet
+from unet512 import UNet
 import matplotlib.pyplot as plt
 
 
@@ -25,6 +25,7 @@ TEST_PATH =  'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/
 SAVE_PATH = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/test/masks'
 
 IMAGES = os.listdir(TEST_PATH)
+MASKS = os.listdir(SAVE_PATH)
 
 # Definește transformarea
 transform = transforms.Compose([
@@ -44,7 +45,7 @@ model.eval()
 x_train_uncropped = np.zeros((DIM_TRAIN_IMAGES, 1024, 768, IMG_CHANNELS), dtype = np.uint8)
 
 
-def process_and_reconstruct_image(image_path, model, device, transform, save_path_mask):
+def process_and_reconstruct_image(image_path, model, device, transform, save_mask_path):
     # Încarcă imaginea originală
     
     image = Image.open(image_path)
@@ -78,19 +79,6 @@ def process_and_reconstruct_image(image_path, model, device, transform, save_pat
 
     reconstructed_mask_image.save(save_mask_path)
     
-    # # Afișează imaginea originală și masca reasamblată
-    # plt.figure(figsize=(12, 6))
-    # plt.subplot(1, 2, 1)
-    # plt.imshow(image)
-    # plt.title('Imagine Originală')
-    # plt.axis('off')
-    
-    # plt.subplot(1, 2, 2)
-    # plt.imshow(reconstructed_mask_image, cmap='gray')
-    # plt.title('Mască Reasamblată')
-    # plt.axis('off')
-    
-    # plt.show()
 
 # # Aplică funcția pe o imagine de test
 # image_path = os.path.join(TEST_PATH, IMAGES[153])  # Presupunem că IMAGES[0] este validă și există
@@ -102,5 +90,9 @@ for img_name in IMAGES:
     save_mask_path = os.path.join(SAVE_PATH, img_name)  # Assuming you want to save with the same name
     # Modify 'process_and_reconstruct_image' to accept 'save_path' and use it to save the mask.
     process_and_reconstruct_image(image_path, model, device, transform, save_mask_path)
+
+for img_name in MASKS:
+    image_path = os.path.join(SAVE_PATH, img_name)
+    
 
 
