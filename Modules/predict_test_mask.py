@@ -6,7 +6,7 @@ import torch
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from PIL import Image
-from unet512 import UNet
+from unet_pytorch import UNet
 import matplotlib.pyplot as plt
 
 
@@ -27,12 +27,13 @@ SAVE_PATH = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/d
 IMAGES = os.listdir(TEST_PATH)
 MASKS = os.listdir(SAVE_PATH)
 
-# Definește transformarea
+
 transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-# Încărcarea modelului
+########## INCARCAREA MODELULUI ########################################
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = UNet(pretrained=True, out_channels=1)
 model_path = "D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/modele/unet_model.pth"
@@ -46,10 +47,11 @@ x_train_uncropped = np.zeros((DIM_TRAIN_IMAGES, 1024, 768, IMG_CHANNELS), dtype 
 
 
 def process_and_reconstruct_image(image_path, model, device, transform, save_mask_path):
+   
     # Încarcă imaginea originală
     
     image = Image.open(image_path)
-    image = image.convert('RGB')  # Asigură-te că imaginea este în modul RGB
+    image = image.convert('RGB')  #Imaginea este în modul RGB
 
     image = image.resize((768, 1024), Image.BILINEAR)
     
@@ -80,15 +82,9 @@ def process_and_reconstruct_image(image_path, model, device, transform, save_mas
     reconstructed_mask_image.save(save_mask_path)
     
 
-# # Aplică funcția pe o imagine de test
-# image_path = os.path.join(TEST_PATH, IMAGES[153])  # Presupunem că IMAGES[0] este validă și există
-# process_and_reconstruct_image(image_path, model, device, transform)
-
-
 for img_name in IMAGES:
     image_path = os.path.join(TEST_PATH, img_name)
-    save_mask_path = os.path.join(SAVE_PATH, img_name)  # Assuming you want to save with the same name
-    # Modify 'process_and_reconstruct_image' to accept 'save_path' and use it to save the mask.
+    save_mask_path = os.path.join(SAVE_PATH, img_name)  
     process_and_reconstruct_image(image_path, model, device, transform, save_mask_path)
 
 for img_name in MASKS:

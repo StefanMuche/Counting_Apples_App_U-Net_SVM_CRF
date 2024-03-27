@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import numpy as np
 
+########### CLASA PENTRU INCARCAREA SETULUI DE ANTRENARE #######################
 
 class FruitSegmentationDataset(Dataset):
     def __init__(self, image_dir, mask_dir, transform=None):
@@ -35,6 +36,8 @@ class FruitSegmentationDataset(Dataset):
 
         return image,mask
 
+######### FUNCTIA PENTRU REALIZAREA CONVOLUTIEI ######################
+
 def conv(in_channels, out_channels):
     return nn.Sequential(
         nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1),
@@ -42,11 +45,15 @@ def conv(in_channels, out_channels):
         nn.ReLU(inplace=True)
     )
 
+######### FUNCTIA PENTRU REALIZAREA DECONVOLUTIEI ###################
+
 def up_conv(in_channels, out_channels):
     return nn.Sequential(
         nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2),
         nn.ReLU(inplace=True)
     )
+
+######## MODELUL U-NET ##################
 
 class UNet(nn.Module):
     def __init__(self, pretrained=True, out_channels=12):
@@ -127,15 +134,17 @@ class UNet(nn.Module):
         return x
 
 
-# Adjusting the loss function for binary segmentation
+######### FUNCTIA DE AJUSTARE A MODELULUI #########################
+
 def UnetLoss(preds, targets):
-    # Using BCEWithLogitsLoss which combines a sigmoid and binary cross entropy loss
+    #BCEWithLogitsLoss combina Sigmoid cu Binary Cross Entropy
     bce_loss = nn.BCEWithLogitsLoss()(preds, targets)
-    preds_bin = torch.sigmoid(preds) > 0.5  # Thresholding to get binary predictions
+    preds_bin = torch.sigmoid(preds) > 0.5  #Aplic threshold ca sa fac masca binara
     acc = (preds_bin == targets).float().mean()
     return bce_loss, acc
 
-# Training function for a single batch
+######### FUNCTIA DE ANTRENARE A MODELULUI ########################
+
 def train_batch(model, data, optimizer, criterion):
     model.train()
     ims, masks = data
@@ -147,7 +156,8 @@ def train_batch(model, data, optimizer, criterion):
     optimizer.step()
     return loss.item(), acc.item()
 
-# Validation function for a single batch
+####### FUNCTIA DE VALIDARE A MODELULUI #######################\
+
 @torch.no_grad()
 def validate_batch(model, data, criterion):
     model.eval()
@@ -158,8 +168,7 @@ def validate_batch(model, data, criterion):
     return loss.item(), acc.item()
 
 if __name__ == '__main__':
-    # Now, place your training script here.
-    # This includes dataset instantiation, DataLoader creation, model training, etc.
+
 
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -180,7 +189,7 @@ if __name__ == '__main__':
     trn_dl = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=4)
     val_dl = DataLoader(val_dataset, batch_size=16, shuffle=False, num_workers=4)
 
-    # Example model instantiation and training loop
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = UNet(pretrained=True, out_channels=1).to(device)
     criterion = UnetLoss

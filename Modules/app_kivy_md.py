@@ -13,6 +13,8 @@ KV = '''
 ScreenManager:
     MainScreen:
     SelectionScreen:
+    UNETScreen:
+    SVMScreen:
 
 <MainScreen>:
     name: 'main'
@@ -61,8 +63,40 @@ ScreenManager:
                 size_hint: None, None
                 size: "120dp", "48dp"
                 md_bg_color: 1, 0, 0, 1
+                on_release: app.root.current = 'ChoosePhoto-U-NET'
             MDRaisedButton:
                 text: "SVM"
+                pos_hint: {"center_x": .5, "center_y": .4}
+                size_hint: None, None
+                size: "120dp", "48dp"
+                md_bg_color: 1, 0, 0, 1
+                on_release: app.root.current = 'ChoosePhoto-SVM'
+            MDRaisedButton:
+                text: 'Back'
+                pos_hint: {"center_x": .5, "center_y": .1}
+                size_hint: None, None
+                size: "120dp", "48dp"
+                md_bg_color: 1, 0, 0, 1
+                on_release: app.root.current = 'main'
+
+<UNETScreen>
+    name: 'ChoosePhoto-U-NET'
+    BoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            title: "U-NET"
+            md_bg_color: 1, 0, 0, 1
+            specific_text_color: 1, 1, 1, 1
+            elevation: 7 
+        FloatLayout:
+            MDRaisedButton:
+                text: "Choose a photo"
+                pos_hint: {"center_x": .5, "center_y": .6}
+                size_hint: None, None
+                size: "120dp", "48dp"
+                md_bg_color: 1, 0, 0, 1
+            MDRaisedButton:
+                text: "Take a photo"
                 pos_hint: {"center_x": .5, "center_y": .4}
                 size_hint: None, None
                 size: "120dp", "48dp"
@@ -73,13 +107,50 @@ ScreenManager:
                 size_hint: None, None
                 size: "120dp", "48dp"
                 md_bg_color: 1, 0, 0, 1
-                on_release: app.root.current = 'main'
+                on_release: app.root.current = 'selection'
+
+<SVMScreen>
+    name: 'ChoosePhoto-SVM'
+    BoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            title: "SVM"
+            md_bg_color: 1, 0, 0, 1
+            specific_text_color: 1, 1, 1, 1
+            elevation: 7 
+        FloatLayout:
+            MDRaisedButton:
+                text: "Choose a photo"
+                pos_hint: {"center_x": .5, "center_y": .6}
+                size_hint: None, None
+                size: "120dp", "48dp"
+                md_bg_color: 1, 0, 0, 1
+            MDRaisedButton:
+                text: "Take a photo"
+                pos_hint: {"center_x": .5, "center_y": .4}
+                size_hint: None, None
+                size: "120dp", "48dp"
+                md_bg_color: 1, 0, 0, 1
+            MDRaisedButton:
+                text: 'Back'
+                pos_hint: {"center_x": .5, "center_y": .1}
+                size_hint: None, None
+                size: "120dp", "48dp"
+                md_bg_color: 1, 0, 0, 1
+                on_release: app.root.current = 'selection'
+
 '''
 
 class MainScreen(MDScreen):
     pass
 
 class SelectionScreen(MDScreen):
+    pass
+
+class UNETScreen(MDScreen):
+    pass
+
+class SVMScreen(MDScreen):
     pass
 
 class MyApp(MDApp):
