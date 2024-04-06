@@ -30,6 +30,7 @@ from PIL import Image
 from unet_pytorch import UNet
 import matplotlib.pyplot as plt
 from skimage import color, measure
+from kivy.uix.camera import Camera
 
 transform = transforms.Compose([
     transforms.ToTensor(),
@@ -89,6 +90,7 @@ ScreenManager:
     BoxLayout:
         orientation: 'vertical'
         MDTopAppBar:
+            id: top_bar
             title: "Alegerea algoritmului"
             md_bg_color: .8, 0, 0, 1  # Un roșu mai închis
             specific_text_color: 1, 1, 1, 1  # Alb pentru text
@@ -195,6 +197,7 @@ ScreenManager:
                 size: "120dp", "48dp"
                 md_bg_color: 0, 0.39, 0, 1
                 on_release: app.root.current = 'selection'
+
 <ImageDisplayScreen>:
     name: 'imagedisplay'
     BoxLayout:
@@ -209,6 +212,7 @@ ScreenManager:
                 orientation: 'vertical'
                 size_hint_y: None
                 height: self.minimum_height
+                spacing: dp(10)
                 Image:
                     id: original_image
                     source: ''
@@ -216,6 +220,7 @@ ScreenManager:
                     height: dp(300)
                     allow_stretch: True
                     keep_ratio: True
+                    mipmap: True  # Improve scaling quality
                 Image:
                     id: gray_image
                     source: ''
@@ -223,20 +228,26 @@ ScreenManager:
                     height: dp(300)
                     allow_stretch: True
                     keep_ratio: True
+                    mipmap: True
                 MDLabel:
                     id: fruit_count
                     text: ''
                     halign: 'center'
                     size_hint_y: None
                     height: self.texture_size[1]    
-        MDRaisedButton:
-            text: "Înapoi"
-            pos_hint: {"center_x": .5}
-            size_hint: None, None
-            size: "120dp", "48dp"
-            md_bg_color: 0, 0.39, 0, 1
-            on_release: app.root.current = 'main'
-
+                    padding_y: dp(8)
+                MDRaisedButton:
+                    text: "Înapoi"
+                    pos_hint: {"center_x": .5, "center_y": .5}
+                    size_hint: None, None
+                    size: "140dp", "52dp"  # Slightly bigger button for better tap
+                    md_bg_color: 0, 0.39, 0, 1
+                    # Adding elevation to the button for a 3D effect
+                    elevation_normal: 2
+                    elevation_down: 5
+                    # Rounded corners for aesthetic appeal
+                    radius: [45]
+                    on_release: app.root.current = 'main'
 
 '''
 
@@ -265,7 +276,7 @@ class MyApp(MDApp):
             select_path=self.select_path,
             preview=True,
         )
-
+    
     def build(self):
         return Builder.load_string(KV)
 
