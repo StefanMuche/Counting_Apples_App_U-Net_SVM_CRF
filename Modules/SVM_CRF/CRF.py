@@ -3,14 +3,13 @@ import random
 from skimage import io, color
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.patches as patches
 
 TRAIN_IMAGES_PATH = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/resized_images1'
 
 images = os.listdir(TRAIN_IMAGES_PATH)
 
 random_img_name = random.choice(images)
-img_path = os.path.join(TRAIN_IMAGES_PATH, 'resized_image_556.jpg')
+img_path = os.path.join(TRAIN_IMAGES_PATH, random_img_name)
 
 img = io.imread(img_path)
 hsv_img = color.rgb2hsv(img)
@@ -58,9 +57,9 @@ def create_graph(img_brighter):
         for j in range(w):
             c[(i, j)] = {}
             if j+1 < w: 
-                c[(i, j)][(i, j+1)] = 0 if p[i, j] == p[i, j+1] else 1
+                c[(i, j)][(i, j+1)] = 0 if p[i,j] == 0 and p[i, j] == p[i, j+1] else 1
             if i+1 < h:  
-                c[(i, j)][(i+1, j)] = 0 if p[i, j] == p[i+1, j] else 1
+                c[(i, j)][(i+1, j)] = 0 if p[i,j] == 0 and p[i, j] == p[i+1, j] else 1
             # if i-1 > 0:
             #     c[(i, j)][(i-1, j)] = 0 if p[i, j] == p[i-1, j] else 1
             # if j-1 > 0:
@@ -114,16 +113,16 @@ def visualize_segmentation(img, S_tree, T_tree):
     segmented_img = img.copy()  
 
     for node, neighbors in S_tree.items():
-        segmented_img[node[0], node[1]] = img[node[0], node[1]]  
+        segmented_img[node[0], node[1]] = [0,0,0] 
+
+        for neighbor in neighbors:
+            segmented_img[neighbor[0], neighbor[1]] = [0,0,0]  
+
+    for node, neighbors in T_tree.items():
+        segmented_img[node[0], node[1]] = img[node[0], node[1]] 
 
         for neighbor in neighbors:
             segmented_img[neighbor[0], neighbor[1]] = img[neighbor[0], neighbor[1]] 
-
-    for node, neighbors in T_tree.items():
-        segmented_img[node[0], node[1]] = [0, 255, 0] 
-
-        for neighbor in neighbors:
-            segmented_img[neighbor[0], neighbor[1]] = [0, 255, 0]
 
     plt.figure(figsize=(12, 6))
 
