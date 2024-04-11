@@ -9,7 +9,7 @@ TRAIN_IMAGES_PATH = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Da
 images = os.listdir(TRAIN_IMAGES_PATH)
 
 random_img_name = random.choice(images)
-img_path = os.path.join(TRAIN_IMAGES_PATH, random_img_name)
+img_path = os.path.join(TRAIN_IMAGES_PATH, 'resized_image_556.jpg')
 
 img = io.imread(img_path)
 hsv_img = color.rgb2hsv(img)
@@ -139,5 +139,6 @@ def visualize_segmentation(img, S_tree, T_tree):
     plt.show()
 
 visualize_segmentation(img_brighter, S_tree, T_tree)
+
 
 
