@@ -8,45 +8,24 @@ from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.screenmanager import MDScreenManager
 from kivymd.uix.toolbar import MDTopAppBar, MDBottomAppBar
-from kivy.lang import Builder
-from kivymd.app import MDApp
-from kivymd.uix.screen import MDScreen
 from kivymd.uix.filemanager import MDFileManager
 from kivy.core.window import Window
 from PIL import Image as PILImage
-import os
-from count_apples import process_and_reconstruct_image
-from unet_pytorch import UNet
-from torchvision import transforms
-from torch.utils.data import DataLoader
+from count_apples_tf import process_and_reconstruct_image
 import numpy as np
-import os
-from tqdm import tqdm
-import cv2
-import torch
-from torchvision import transforms
-from torch.utils.data import DataLoader
-from PIL import Image
-from unet_pytorch import UNet
-import matplotlib.pyplot as plt
-from skimage import color, measure
-from kivy.uix.camera import Camera
+from kivy.metrics import dp
+import tensorflow as tf
 from kivymd.uix.label import MDLabel
 from kivy.uix.image import Image
 from kivy.uix.boxlayout import BoxLayout
-transform = transforms.Compose([
-    transforms.ToTensor(),
-])
+from plyer import camera
+import time
+import os
+from PIL import Image as PILImage
 
 ########## INCARCAREA MODELULUI ########################################
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = UNet(pretrained=True, out_channels=1)
-model_path = "D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/modele/unet_model.pth"
-model.load_state_dict(torch.load(model_path, map_location=device))
-model.to(device)
-model.eval()
-
+model_path = 'D:/Python_VSCode/licenta_v2/Modules/U-Net/model_tf.pb'  # Ajustează calea către modelul salvat
+model = tf.saved_model.load(model_path)
 
 KV = '''
 ScreenManager:
@@ -55,6 +34,7 @@ ScreenManager:
     UNETScreen:
     SVMScreen:
     ImageDisplayScreen:
+    CameraClickScreen:
 
 <MainScreen>:
     name: 'main'
@@ -215,20 +195,21 @@ ScreenManager:
                 cols: 1
                 size_hint_y: None
                 height: self.minimum_height
-                spacing: dp(30)
-        MDRaisedButton:
-            text: "Înapoi"
-            pos_hint: {"center_x": .5, "center_y": .5}
-            size_hint: None, None
-            size: "140dp", "52dp"  # Slightly bigger button for better tap
-            md_bg_color: 0, 0.39, 0, 1
-            # Adding elevation to the button for a 3D effect
-            elevation_normal: 2
-            elevation_down: 5
-            # Rounded corners for aesthetic appeal
-            radius: [45]
-            on_release: app.root.current = 'main'       
-
+                spacing: dp(30)  # Reduced spacing
+        BoxLayout:
+            size_hint_y: None
+            height: '52dp'
+            pos_hint: {'center_x': 0.5}
+            MDRaisedButton:
+                text: "Înapoi"
+                pos_hint: {"center_x": .5, "center_y": .5}
+                on_release: app.root.current = 'main'
+                size_hint: None, None
+                size: "140dp", "52dp"
+                md_bg_color: 0, 0.39, 0, 1
+                elevation_normal: 2
+                elevation_down: 5
+                radius: [45]
 
 '''
 
@@ -245,6 +226,9 @@ class SVMScreen(MDScreen):
     pass
 
 class ImageDisplayScreen(MDScreen):
+    pass
+
+class CameraClickScreen(MDScreen):
     pass
 
 class MyApp(MDApp):
@@ -269,42 +253,90 @@ class MyApp(MDApp):
     def open_file_manager(self, *args):
         self.file_manager.show('/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/test/images')  # You can specify the start directory here
         self.manager_open = True
+    
     def add_path_to_selection(self, path):
         if path not in self.selected_files:
             self.selected_files.append(path)  # Add unique file to the list
 
     def process_images(self):
-        results = []  # List to hold (path, count) tuples
+        results = []  # List to hold (original_path, segmented_path, count) tuples
+        # ... [rest of your code] ...
         for path in self.selected_files:
-            img, num_mere = process_and_reconstruct_image(path, model, device, transform)
-            results.append((path, num_mere))
+            img, num_mere = process_and_reconstruct_image(path, model)
+            if img.dtype != np.uint8:
+                img = ((img - img.min()) / (img.max() - img.min()) * 255).astype(np.uint8)
 
-        # Clear and update UI for each image and count
+            pil_image = PILImage.fromarray(img)
+            segmented_path = os.path.splitext(path)[0] + '_segmented.png'
+            pil_image.save(segmented_path)
+            results.append((path, segmented_path, num_mere))
         screen = self.root.get_screen('imagedisplay')
         screen.ids.image_grid.clear_widgets()
-        for image_path, count in results:
-            image_box = BoxLayout(orientation='vertical', size_hint_y=None, height=200 + 80)  # Adjust as necessary
-            img_widget = Image(source=image_path, size_hint=(1, None), height=280)  # Image takes up all width, height is fixed
+        for original_path, segmented_path, count in results:
+            # Define a fixed size for images and labels
+            img_size = (dp(200), dp(200))  # Update this size to fit your need
+            label_size = (dp(100), dp(50))  # Update this size to fit your need
             count_label = MDLabel(text=f"{count} mere", size_hint_y=None, height=20, halign='center')
             # Bind label size to texture size and center text horizontally
             count_label.bind(size=count_label.setter('text_size'))  
             count_label.bind(texture_size=count_label.setter('size'))
-            
-            image_box.add_widget(img_widget)
+
+            # Horizontal BoxLayout for each image pair
+            image_box = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(250))
+
+            # Original image widget
+            original_img_widget = Image(
+                source=original_path,
+                size_hint=(1, None),
+                size=img_size,
+                allow_stretch=True,
+                keep_ratio=False
+            )
+
+            # Segmented image widget
+            segmented_img_widget = Image(
+                source=segmented_path,
+                size_hint=(1, None),
+                size=img_size,
+                allow_stretch=True,
+                keep_ratio=False,
+            )
+
+            # Label for the count, centered
+            # count_label = MDLabel(
+            #     text=f"{count} mere",
+            #     size_hint=(None, None),
+            #     size=label_size,
+            #     halign='center',
+            #     valign='center'
+            # )
+            # count_label.bind(size=count_label.setter('text_size'))
+
+            # Add widgets to the horizontal BoxLayout
+            image_box.add_widget(original_img_widget)
+            image_box.add_widget(segmented_img_widget)
             image_box.add_widget(count_label)
+            # image_box.add_widget(count_label)
+
+            # Add the horizontal BoxLayout to the GridLayout
             screen.ids.image_grid.add_widget(image_box)
 
-        # Add total count at the end
-        total_mere = sum([count for _, count in results])
-        total_count_label = MDLabel(text=f"În total sunt {total_mere} mere.", size_hint_y=None, height=20, halign='center')
-        # Same binding for the total count label
-        total_count_label.bind(size=total_count_label.setter('text_size'))
-        total_count_label.bind(texture_size=total_count_label.setter('size'))
-        screen.ids.image_grid.add_widget(total_count_label)
+        # ... [the rest of your existing code for adding the total count] ...
 
+
+        # Add the total count at the end outside the scroll view
+        total_mere = sum([count for _, _, count in results])
+        total_count_label = MDLabel(
+            text=f"În total sunt {total_mere} mere.",
+            size_hint=(1, None),
+            height=dp(20),
+            halign='center'
+        )
+        screen.ids.image_grid.add_widget(total_count_label)
         self.root.current = 'imagedisplay'
         self.reset_selection()
 
+        
     def reset_selection(self):
         # Clear the selected files list for new selections
         self.selected_files = []

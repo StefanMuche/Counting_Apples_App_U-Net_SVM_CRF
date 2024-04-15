@@ -38,7 +38,7 @@ ScreenManager:
     BoxLayout:
         orientation: 'vertical'
         MDTopAppBar:
-            title: "Segmentarea și numărarea automata automata a fructelor"
+            title: "Numararea fructelor"
             title_text_size: '10dp'
             md_bg_color: .8, 0, 0, 1  # Un roșu mai închis
             specific_text_color: 1, 1, 1, 1  # Alb pentru text
@@ -122,17 +122,11 @@ ScreenManager:
                 opacity: .9  # ajustează pentru a asigura că textul este lizibil
             MDRaisedButton:
                 text: "Choose a photo"
-                pos_hint: {"center_x": .5, "center_y": .6}
+                pos_hint: {"center_x": .5, "center_y": .5}
                 size_hint: None, None
-                size: "120dp", "48dp"
+                size: "160dp", "60dp"
                 md_bg_color: 0, 0.39, 0, 1
                 on_release: app.open_file_manager()
-            MDRaisedButton:
-                text: "Take a photo"
-                pos_hint: {"center_x": .5, "center_y": .4}
-                size_hint: None, None
-                size: "120dp", "48dp"
-                md_bg_color: 0, 0.39, 0, 1
             MDRaisedButton:
                 text: 'Back'
                 pos_hint: {"center_x": .5, "center_y": .1}
@@ -159,15 +153,9 @@ ScreenManager:
                 opacity: .9  # ajustează pentru a asigura că textul este lizibil
             MDRaisedButton:
                 text: "Choose a photo"
-                pos_hint: {"center_x": .5, "center_y": .6}
+                pos_hint: {"center_x": .5, "center_y": .5}
                 size_hint: None, None
-                size: "120dp", "48dp"
-                md_bg_color: 0, 0.39, 0, 1
-            MDRaisedButton:
-                text: "Take a photo"
-                pos_hint: {"center_x": .5, "center_y": .4}
-                size_hint: None, None
-                size: "120dp", "48dp"
+                size: "160dp", "60dp"
                 md_bg_color: 0, 0.39, 0, 1
             MDRaisedButton:
                 text: 'Back'
@@ -246,12 +234,18 @@ class MyApp(MDApp):
         self.file_manager.ext = ['.jpg', '.jpeg', '.png']  # Set extensions for images
 
     def open_file_manager(self, *args):
-        self.file_manager.show('/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/test/images')  # You can specify the start directory here
+        self.file_manager.show('/')  # You can specify the start directory here
         self.manager_open = True
     
     def add_path_to_selection(self, path):
-        if path not in self.selected_files:
-            self.selected_files.append(path)  # Add unique file to the list
+        valid_extensions = ('.jpg', '.jpeg', '.png')
+
+        if path.endswith(valid_extensions) and path not in self.selected_files:
+            self.selected_files.append(path)
+        else:
+            self.process_images()
+            self.manager_open = False
+            self.file_manager.close()
 
     def process_images(self):
         results = []  # List to hold (path, count) tuples
@@ -290,7 +284,7 @@ class MyApp(MDApp):
 
     def exit_manager(self, *args):
         # Close the file manager
-        self.process_images()
+        
         self.manager_open = False
         self.file_manager.close()
 
