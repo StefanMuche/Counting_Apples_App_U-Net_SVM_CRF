@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-train_loss_history_loaded = np.load('train_loss_history.npy')
-val_loss_history_loaded = np.load('val_loss_history.npy')
+train_loss_history_loaded = np.load('D:/Python_VSCode/licenta_v2/Modules/U-Net/train_loss_history.npy')
+val_loss_history_loaded = np.load('D:/Python_VSCode/licenta_v2/Modules/U-Net/val_loss_history.npy')
 
 epochs = np.arange(1,13)
 
@@ -16,8 +16,8 @@ plt.legend()
 
 plt.show()
 
-train_acc_history_loaded = np.load('train_acc_history.npy')
-val_acc_history_loaded = np.load('val_acc_history.npy')
+train_acc_history_loaded = np.load('D:/Python_VSCode/licenta_v2/Modules/U-Net/train_acc_history.npy')
+val_acc_history_loaded = np.load('D:/Python_VSCode/licenta_v2/Modules/U-Net/val_acc_history.npy')
 
 plt.figure(figsize=(10,6))
 plt.plot(epochs, train_acc_history_loaded, 'b', label='Training Accuracy')

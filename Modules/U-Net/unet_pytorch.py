@@ -84,52 +84,38 @@ class UNet(nn.Module):
         self.conv11 = nn.Sequential(nn.Conv2d(16, out_channels, kernel_size=1))
 
     def forward(self, x):
-        # print(f': {x.shape}')
+  
         block1 = self.block1(x)
-        # print(f'Inainte de maxpool: {block1.shape}')
         block11 = self.block11(block1)
-        # print(f': {block11.shape}')
+
         block2 = self.block2(block11)
-        # print(f'Inainte de maxpool: {block2.shape}')
         block22 = self.block22(block2)
-        # print(f': {block22.shape}')
+
         block3 = self.block3(block22)
-        # print(f'Inainte de maxpool: {block3.shape}')
         block33 = self.block33(block3)
-        # print(f': {block33.shape}')
+
         block4 = self.block4(block33)
-        # print(f'Inainte de maxpool: {block4.shape}')
         block44 = self.block44(block4)
-        # print(f': {block44.shape}')
+
         x = self.conv_bottleneck(block44)
-        # print(f': {x.shape}')
 
         x = self.up_conv7(x)
-        # print(f': {x.shape}')
         x = torch.cat([x, block4], dim=1)
         x = self.conv7(x)
-        # print(f': {x.shape}')
 
         x = self.up_conv8(x)
-        # print(f': {x.shape}')
         x = torch.cat([x, block3], dim=1)
         x = self.conv8(x)
-        # print(f': {x.shape}')
 
         x = self.up_conv9(x)
-        # print(f': {x.shape}')
         x = torch.cat([x, block2], dim=1)
         x = self.conv9(x)
-        # print(f': {x.shape}')
 
         x = self.up_conv10(x)
-        # print(f': {x.shape}')
         x = torch.cat([x, block1], dim=1)
         x = self.conv10(x)
-        # print(f': {x.shape}')
 
         x = self.conv11(x)
-        # print(f': {x.shape}')
 
         return x
 
@@ -156,7 +142,7 @@ def train_batch(model, data, optimizer, criterion):
     optimizer.step()
     return loss.item(), acc.item()
 
-####### FUNCTIA DE VALIDARE A MODELULUI #######################\
+####### FUNCTIA DE VALIDARE A MODELULUI #######################
 
 @torch.no_grad()
 def validate_batch(model, data, criterion):
@@ -230,12 +216,12 @@ if __name__ == '__main__':
         
         if val_loss < best_loss:
             best_loss = val_loss
-            save_path = "D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/modele/unet_model_0.05.pth"
+            save_path = "D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/modele/unet_modelblasbla_0.05.pth"
             torch.save(model.state_dict(), save_path)     
-            np.save('train_loss_history_0.05.npy', np.array(train_loss_history))
-            np.save('val_loss_history_0.05.npy', np.array(val_loss_history))   
-            np.save('train_acc_history_0.05.npy', np.array(train_acc_history))
-            np.save('val_acc_history_0.05.npy', np.array(val_acc_history))   
+            np.save('train_loss_history_0.05blabla.npy', np.array(train_loss_history))
+            np.save('val_loss_history_0.05bbb.npy', np.array(val_loss_history))   
+            np.save('train_acc_history_0.05bbb.npy', np.array(train_acc_history))
+            np.save('val_acc_history_0.05bbb.npy', np.array(val_acc_history))   
 
 
 

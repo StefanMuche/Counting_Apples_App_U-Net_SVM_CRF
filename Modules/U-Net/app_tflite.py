@@ -11,15 +11,26 @@ from kivymd.uix.toolbar import MDTopAppBar, MDBottomAppBar
 from kivymd.uix.filemanager import MDFileManager
 from kivy.core.window import Window
 from PIL import Image as PILImage
-from count_apples_tf import process_and_reconstruct_image
+from bun import process_and_reconstruct_image
 import tensorflow as tf
 from kivymd.uix.label import MDLabel
 from kivy.uix.image import Image
 from kivy.uix.boxlayout import BoxLayout
 
 ########## INCARCAREA MODELULUI ########################################
-model_path = 'D:/Python_VSCode/licenta_v2/Modules/U-Net/model_tf.pb'  # Ajustează calea către modelul salvat
-model = tf.saved_model.load(model_path)
+import tensorflow as tf
+
+# Calea la modelul TensorFlow Lite
+model_path = 'D:/Python_VSCode/licenta_v2/model.tflite'
+
+# Crearea unui interpreter TensorFlow Lite
+interpreter = tf.lite.Interpreter(model_path=model_path)
+interpreter.allocate_tensors()
+
+# Obține detalii despre input și output pentru a putea manipula tensorii corespunzător
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+
 
 KV = '''
 ScreenManager:
@@ -249,7 +260,7 @@ class MyApp(MDApp):
     def process_images(self):
         results = []  # List to hold (path, count) tuples
         for path in self.selected_files:
-            img, num_mere = process_and_reconstruct_image(path, model)
+            img, num_mere = process_and_reconstruct_image(path, interpreter)
             results.append((path, num_mere))
 
         # Clear and update UI for each image and count

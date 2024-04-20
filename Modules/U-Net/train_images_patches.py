@@ -36,7 +36,7 @@ os.makedirs(SAVE_PATH_MASKS, exist_ok=True)
 ########### REDIMENSIONAREA IMAGINILOR SI MASTILOR LA DIMENSIUNEA 768X1024 ###############
 
 def reshape_train_data(images_path, masks_path, x_data, y_data):
-    print("Reshaping train data...\n")
+    print("Redimensionarea setului de date...\n")
 
     for n, image_file in enumerate(tqdm(os.listdir(images_path))):
         image_path = os.path.join(images_path, image_file)
@@ -52,13 +52,13 @@ def reshape_train_data(images_path, masks_path, x_data, y_data):
         mask = np.expand_dims(mask, axis=-1)
         y_data[n] = torch.from_numpy(mask).bool()
 
-    print("Done reshaping train data!\n")
+    print("Redimensionarea setului de date a fost efectuata!\n")
     return x_data, y_data
 
 ########## IMPARTIREA SETULUI DE ANTRENAMENT IN PATCH-URI DE 256x256 ##################
 
 def split_images_masks_torch(x_data, y_data, patch_size):
-    print("Splitting images and masks into patches...\n")
+    print("Impartirea imaginilor si mastilor in pachete...\n")
     num_images, img_height, img_width, _ = x_data.shape
     patch_per_image = (img_height // patch_size) * (img_width // patch_size)
     x_patches = torch.zeros(num_images * patch_per_image, patch_size, patch_size, IMG_CHANNELS, dtype=torch.uint8)
@@ -72,13 +72,13 @@ def split_images_masks_torch(x_data, y_data, patch_size):
                 y_patches[index] = y_data[i, row:row + patch_size, col:col + patch_size]
                 index += 1
     
-    print("Done splitting images and masks into patches!\n")
+    print("Impartirea imaginilor si mastilor in pachete a fost realizata!\n")
     return x_patches, y_patches
 
 ########## SALVAREA PATCH-URILOR ###################
 
 def save_patches_torch(images, masks, save_path_images, save_path_masks):
-    print("Saving patches...\n")
+    print("Salvarea bucatilor de imagini...\n")
     for i in range(images.shape[0]):
         image_filename = f"patched_image_{i + 1}.jpg"
         mask_filename = f"patched_mask_{i + 1}.jpg"
@@ -86,7 +86,7 @@ def save_patches_torch(images, masks, save_path_images, save_path_masks):
         mask_path = os.path.join(save_path_masks, mask_filename)
         cv2.imwrite(image_path, images[i].numpy())
         cv2.imwrite(mask_path, masks[i].numpy().astype(np.uint8) * 255)
-    print("Done saving patches!\n")
+    print("Salvarea bucatilor de imagini a fost efectuata!\n")
 
 
 x_train_uncropped, y_train_uncropped = reshape_train_data(TRAIN_IMAGES_PATH, TRAIN_MASKS_PATH, x_train_uncropped, y_train_uncropped)
