@@ -71,17 +71,17 @@ def process_and_reconstruct_image(image_path, model):
             reconstructed_mask[i*256:(i+1)*256, j*256:(j+1)*256] = pred_mask[0, 0, :, :] * 255
 
     # Post-procesare pentru a separa obiectele
-    ret, thresh = cv2.threshold(reconstructed_mask, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    kernel = np.ones((3,3), np.uint8)
-    opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
-    labels = measure.label(opening, background=0)
-    num_mere = np.max(labels)  # Numără obiectele detectate
+    num_labels, labels_im, stats, centroids = cv2.connectedComponentsWithStats(reconstructed_mask, connectivity=8, ltype=cv2.CV_32S)
+    num_mere = num_labels - 1  # Scădem fondul
 
-    # Afisează label-urile peste imaginea originală convertită în RGB
-    label_overlay = color.label2rgb(labels, image=np.array(Image.open(image_path).convert('RGB').resize((768, 1024))), bg_label=0, alpha=0.3)
+    # Colorarea etichetelor pentru vizualizare
+    label_hue = np.uint8(179 * labels_im / np.max(labels_im))
+    blank_ch = 255 * np.ones_like(label_hue)
+    labeled_img = cv2.merge([label_hue, blank_ch, blank_ch])
+    labeled_img = cv2.cvtColor(labeled_img, cv2.COLOR_HSV2BGR)
+    labeled_img[label_hue == 0] = 0  # Fondul negru
 
     print(f'Found {num_mere} apples.')
-    return label_overlay, num_mere
-
+    return labeled_img, num_mere
 
 

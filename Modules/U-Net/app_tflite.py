@@ -1,3 +1,4 @@
+
 from kivy.config import Config
 Config.set('graphics', 'width', '360')  # Lățimea tipică a unui telefon mobil
 Config.set('graphics', 'height', '640')  # Înălțimea tipică a unui telefon mobil
@@ -11,7 +12,7 @@ from kivymd.uix.toolbar import MDTopAppBar, MDBottomAppBar
 from kivymd.uix.filemanager import MDFileManager
 from kivy.core.window import Window
 from PIL import Image as PILImage
-from bun import process_and_reconstruct_image
+from count_apples_tflite import process_and_reconstruct_image
 import tensorflow as tf
 from kivymd.uix.label import MDLabel
 from kivy.uix.image import Image
@@ -165,6 +166,7 @@ ScreenManager:
                 size_hint: None, None
                 size: "160dp", "60dp"
                 md_bg_color: 0, 0.39, 0, 1
+                on_release: app.open_file_manager()
             MDRaisedButton:
                 text: 'Back'
                 pos_hint: {"center_x": .5, "center_y": .1}
