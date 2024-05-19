@@ -22,7 +22,7 @@ from kivy.uix.boxlayout import BoxLayout
 import tensorflow as tf
 
 # Calea la modelul TensorFlow Lite
-model_path = 'D:/Python_VSCode/licenta_v2/model.tflite'
+model_path = 'D:/Python_VSCode/licenta_v2/Models/model.tflite'
 
 # Crearea unui interpreter TensorFlow Lite
 interpreter = tf.lite.Interpreter(model_path=model_path)
