@@ -74,9 +74,6 @@ def process_and_reconstruct_image(image_path, interpreter):
     opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
     labels = measure.label(opening, background=0)
     num_mere = np.max(labels)  # Numără obiectele detectate
-
-    # Afisează label-urile peste imaginea originală convertită în RGB
     label_overlay = color.label2rgb(labels, image=np.array(Image.open(image_path).convert('RGB').resize((768, 1024))), bg_label=0, alpha=0.3)
-
     print(f'Found {num_mere} apples.')
     return label_overlay, num_mere
