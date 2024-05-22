@@ -5,9 +5,6 @@ from sklearn.preprocessing import scale
 from joblib import load
 import cv2
 
-image_path = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/test/predicted_images/test_image331.jpg'
-model_path = 'D:/Python_VSCode/licenta_v2/Modules/svm_model_rbf_cielab_a_4clusters.joblib'
-
 def apply_gaussian_filter(image, sigma=2):
     """Apply Gaussian filter to the image to reduce noise."""
     return filters.gaussian(image, sigma=sigma)
@@ -65,7 +62,8 @@ def count_and_label_apples(binary_image, original_image):
     label_overlay = color.label2rgb(labels, image=original_image, bg_label=0, alpha=0.3)
     
     return num_apples, label_overlay
-def count_apples(image_path, model_path):
+
+def count_apples_svm(image_path, model_path):
 
     # Segment the image
     segmented_image = segment_image(image_path, model_path)
@@ -73,29 +71,7 @@ def count_apples(image_path, model_path):
 
     # Count apples and get labeled overlay image
     original_image = io.imread(image_path)
-    if original_image.shape[2] == 4:
-        original_image = original_image[:, :, :3]
     num_apples, labeled_image = count_and_label_apples(result_image, original_image)
-
-    print(f'Found {num_apples} apples.')
-    # Display results
-    plt.figure(figsize=(10, 8))
-    plt.imshow(segmented_image, cmap='gray')
-    plt.title('Segmented Image')
-    plt.axis('off')
-    plt.show()
-
-    plt.figure(figsize=(10, 8))
-    plt.imshow(result_image, cmap='gray')
-    plt.title('Retained Dark Gray Pixels')
-    plt.axis('off')
-    plt.show()
-
-    plt.figure(figsize=(10, 8))
-    plt.imshow(labeled_image)
-    plt.title(f'Labeled Apples (Total: {num_apples})')
-    plt.axis('off')
-    plt.show()
+    
     return num_apples
 
-count_apples(image_path, model_path)

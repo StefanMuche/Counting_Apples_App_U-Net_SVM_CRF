@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 
 ############ CAILE CATRE IMAGINI SI MASTI ###############################
 
-masks_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/test/masks'
-images_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/test/images'
-output_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/test/labels'
+masks_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/Masks_for_errors'
+images_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/images_for_errors_png'
+output_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/Labels_train_data'
 
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
@@ -45,35 +45,7 @@ for filename in os.listdir(masks_dir):
         # Salvez imaginea
         plt.imsave(os.path.join(output_dir, filename), label_overlay)
         
-        print(f'Processed {filename}: found {num_mere} apples.')
+        print(num_mere)
 
 print("Processing completed.")
-
-
-###### AFISARE IMAGINE SEGMENTATA SI NUMARUL DE MERE DIN IMAGINE ################
-
-# print(f"Numărul de mere în masca segmentată: {num_mere}")
-# cv2.imshow('Test image', image)
-# cv2.imshow('Mask', mask)
-# cv2.imshow('Segmented Mask with Labels', color.label2rgb(labels, image, bg_label=0, alpha=0.3))
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Example usage

@@ -76,4 +76,4 @@ def process_and_reconstruct_image(image_path, interpreter):
     num_mere = np.max(labels)  # Numără obiectele detectate
     label_overlay = color.label2rgb(labels, image=np.array(Image.open(image_path).convert('RGB').resize((768, 1024))), bg_label=0, alpha=0.3)
     print(f'Found {num_mere} apples.')
-    return label_overlay, num_mere
+    return num_mere

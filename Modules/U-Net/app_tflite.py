@@ -1,4 +1,3 @@
-
 from kivy.config import Config
 Config.set('graphics', 'width', '360')  # Lățimea tipică a unui telefon mobil
 Config.set('graphics', 'height', '640')  # Înălțimea tipică a unui telefon mobil
@@ -17,13 +16,14 @@ import tensorflow as tf
 from kivymd.uix.label import MDLabel
 from kivy.uix.image import Image
 from kivy.uix.boxlayout import BoxLayout
+from svm_crf import count_apples_svm
 
 ########## INCARCAREA MODELULUI ########################################
 import tensorflow as tf
 
 # Calea la modelul TensorFlow Lite
+model_path_svm = 'D:/Python_VSCode/licenta_v2/Modules/svm_model_rbf_cielab_a_4clusters.joblib'
 model_path = 'D:/Python_VSCode/licenta_v2/Models/model.tflite'
-
 # Crearea unui interpreter TensorFlow Lite
 interpreter = tf.lite.Interpreter(model_path=model_path)
 interpreter.allocate_tensors()
@@ -96,14 +96,14 @@ ScreenManager:
                 size_hint: None, None
                 size: "120dp", "48dp"
                 md_bg_color: 0, 0.39, 0, 1  # Verde închis
-                on_release: app.root.current = 'ChoosePhoto-U-NET'
+                on_release: app.set_algorithm('unet')
             MDRaisedButton:
                 text: "SVM"
                 pos_hint: {"center_x": .5, "center_y": .4}
                 size_hint: None, None
                 size: "120dp", "48dp"
                 md_bg_color: 0, 0.39, 0, 1  # Verde închis
-                on_release: app.root.current = 'ChoosePhoto-SVM'
+                on_release: app.set_algorithm('svm')
             MDRaisedButton:
                 text: 'Back'
                 pos_hint: {"center_x": .5, "center_y": .1}
@@ -113,7 +113,7 @@ ScreenManager:
                 on_release: app.root.current = 'main'
 
 
-<UNETScreen>
+<UNETScreen>:
     name: 'ChoosePhoto-U-NET'
     BoxLayout:
         orientation: 'vertical'
@@ -144,7 +144,7 @@ ScreenManager:
                 md_bg_color: 0, 0.39, 0, 1
                 on_release: app.root.current = 'selection'
 
-<SVMScreen>
+<SVMScreen>:
     name: 'ChoosePhoto-SVM'
     BoxLayout:
         orientation: 'vertical'
@@ -231,6 +231,7 @@ class MyApp(MDApp):
         self.manager = None
         self.selected_files = []
         self.total_mere = 0
+        self.current_algorithm = None
         self.file_manager = MDFileManager(
             exit_manager=self.exit_manager,
             select_path=self.add_path_to_selection,
@@ -243,6 +244,13 @@ class MyApp(MDApp):
     def on_start(self):
         # Set extensions for images
         self.file_manager.ext = ['.jpg', '.jpeg', '.png']  
+
+    def set_algorithm(self, algorithm):
+        self.current_algorithm = algorithm
+        if algorithm == 'unet':
+            self.root.current = 'ChoosePhoto-U-NET'
+        elif algorithm == 'svm':
+            self.root.current = 'ChoosePhoto-SVM'
 
     def open_file_manager(self, *args):
         # You can specify the start directory here
@@ -262,7 +270,12 @@ class MyApp(MDApp):
     def process_images(self):
         results = []  # List to hold (path, count) tuples
         for path in self.selected_files:
-            img, num_mere = process_and_reconstruct_image(path, interpreter)
+            if self.current_algorithm == 'unet':
+                num_mere = process_and_reconstruct_image(path, interpreter)
+                img = path
+            elif self.current_algorithm == 'svm':
+                num_mere = count_apples_svm(path, model_path_svm)  # Use the count_apples function for SVM
+                img = path  # The image path itself, as count_apples_svm doesn't return the image
             results.append((path, num_mere))
 
         # Clear and update UI for each image and count
@@ -296,7 +309,6 @@ class MyApp(MDApp):
 
     def exit_manager(self, *args):
         # Close the file manager
-        
         self.manager_open = False
         self.file_manager.close()
 

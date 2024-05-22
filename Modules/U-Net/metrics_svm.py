@@ -1,66 +1,59 @@
-import numpy as np
 import os
+import numpy as np
 from tqdm import tqdm
 import cv2
-import torch
-from torchvision import transforms
-from PIL import Image
-from unet_pytorch import UNet
-import matplotlib.pyplot as plt
-from skimage import color, measure
+from skimage import io, color, filters, img_as_float, measure
+from sklearn.preprocessing import scale
 from sklearn.metrics import accuracy_score, mean_squared_error
+from joblib import load
 import torch.nn.functional as F
-from skimage import io
-########### DEFINIREA CONSTANTELOR ######################
-
-PATCH_SIZE = 256
-IMG_CHANNELS = 3
-
-transform = transforms.Compose([
-    transforms.ToTensor(),
-])
-
-########## INCARCAREA MODELULUI ########################################
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = UNet(pretrained=True, out_channels=1)
-model_path = "D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/modele/unet_model.pth"
-model.load_state_dict(torch.load(model_path, map_location=device))
-model.to(device)
-model.eval()
+import torch
 
 images_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/images_for_errors_png'
 masks_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/Masks_for_errors'
+model_path = 'D:/Python_VSCode/licenta_v2/Modules/svm_model_rbf_cielab_a_4clusters.joblib'
 
-def process_and_reconstruct_image(image_path, model, device, transform):
-    # Încarcă imaginea originală
-    image = Image.open(image_path)
-    image = image.convert('RGB')  # Imaginea este în modul RGB
+def apply_gaussian_filter(image, sigma=2):
+    """Apply Gaussian filter to the image to reduce noise."""
+    return filters.gaussian(image, sigma=sigma)
 
-    image = image.resize((768, 1024), Image.BILINEAR)
+def extract_features(image):
+    filtered_image = apply_gaussian_filter(image, sigma=2)
     
-    # Inițializează tensorul pentru imaginea reconstituită
-    reconstructed_mask = np.zeros((1024, 768), dtype=np.uint8)
-
-    # Imparte imaginea în patch-uri și procesează fiecare patch
-    for i in range(4):  # 4 patch-uri pe înălțime
-        for j in range(3):  # 3 patch-uri pe lățime
-            # Extrage patch-ul
-            patch = image.crop((j * PATCH_SIZE, i * PATCH_SIZE, (j+1) * PATCH_SIZE, (i+1) * PATCH_SIZE))
-            
-            # Transformă și adaugă dimensiunea batch-ului
-            patch_tensor = transform(patch).unsqueeze(0).to(device)
-            
-            # Aplică modelul pe patch
-            with torch.no_grad():
-                pred_mask = model(patch_tensor)
-                pred_mask = torch.sigmoid(pred_mask) > 0.5
-                pred_mask_np = pred_mask.cpu().squeeze().numpy().astype(np.uint8) * 255
-            
-            # Adaugă patch-ul procesat în masca reconstituită
-            reconstructed_mask[i*PATCH_SIZE:(i+1)*PATCH_SIZE, j*PATCH_SIZE:(j+1)*PATCH_SIZE] = pred_mask_np
+    # Convert to CIELAB color space
+    lab_image = color.rgb2lab(filtered_image)
     
-    return reconstructed_mask
+    # Extract 'a' channel
+    a_channel = lab_image[:, :, 1]
+    normalized_a_channel = scale(a_channel.flatten()).reshape(a_channel.shape)
+
+    combined_features = normalized_a_channel.reshape(-1, 1)
+
+    return combined_features, filtered_image
+
+def segment_image(image_path, model_path):
+    image = img_as_float(io.imread(image_path))
+    if image.shape[2] == 4:
+        image = image[:, :, :3]
+    
+    # Resize image to 768x1024
+    image = cv2.resize(image, (768, 1024))
+
+    features, filtered_image = extract_features(image)
+
+    model = load(model_path)
+
+    predicted_labels = model.predict(features)
+    predicted_labels = predicted_labels.reshape(image.shape[:2])
+   
+    return predicted_labels
+
+def retain_dark_gray_pixels(segmented_image):
+    binary_mask = np.zeros_like(segmented_image)
+    binary_mask[segmented_image == 2] = 1 
+    output_image = binary_mask * 255
+
+    return output_image
 
 def calculate_metrics(segmented_image, original_mask):
     # Flatten the images
@@ -87,7 +80,7 @@ def calculate_metrics(segmented_image, original_mask):
 
     return accuracy, mse, bce_loss, dice_loss.item()
 
-def process_and_evaluate_all_images(images_dir, masks_dir, model, device, transform):
+def process_and_evaluate_all_images(images_dir, masks_dir, model_path):
     accuracies = []
     mses = []
     bce_losses = []
@@ -100,7 +93,8 @@ def process_and_evaluate_all_images(images_dir, masks_dir, model, device, transf
 
             try:
                 # Segment the image
-                segmented_image = process_and_reconstruct_image(image_path, model, device, transform)
+                segmented_image = segment_image(image_path, model_path)
+                result_image = retain_dark_gray_pixels(segmented_image)
 
                 # Load and resize the original mask
                 original_mask = io.imread(mask_path)
@@ -111,7 +105,7 @@ def process_and_evaluate_all_images(images_dir, masks_dir, model, device, transf
                 original_mask = cv2.resize(original_mask.astype(np.uint8), (768, 1024))
 
                 # Calculate metrics
-                accuracy, mse, bce_loss, dice_loss = calculate_metrics(segmented_image, original_mask)
+                accuracy, mse, bce_loss, dice_loss = calculate_metrics(result_image, original_mask)
                 accuracies.append(accuracy)
                 mses.append(mse)
                 bce_losses.append(bce_loss)
@@ -135,4 +129,4 @@ def process_and_evaluate_all_images(images_dir, masks_dir, model, device, transf
     return overall_accuracy, overall_mse, overall_bce_loss, overall_dice_loss
 
 # Run the evaluation
-overall_accuracy, overall_mse, overall_bce_loss, overall_dice_loss = process_and_evaluate_all_images(images_dir, masks_dir, model, device, transform)
+overall_accuracy, overall_mse, overall_bce_loss, overall_dice_loss = process_and_evaluate_all_images(images_dir, masks_dir, model_path)

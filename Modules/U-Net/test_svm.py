@@ -4,8 +4,10 @@ from skimage import io, color, filters, img_as_float, measure
 from sklearn.preprocessing import scale
 from joblib import load
 import cv2
+from sklearn.metrics import accuracy_score, mean_squared_error
 
-image_path = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/test/predicted_images/test_image331.jpg'
+image_path = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/images_for_errors_png'
+mask_path = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/Masks_for_errors'
 model_path = 'D:/Python_VSCode/licenta_v2/Modules/svm_model_rbf_cielab_a_4clusters.joblib'
 
 def apply_gaussian_filter(image, sigma=2):
@@ -46,38 +48,38 @@ def retain_dark_gray_pixels(segmented_image):
 
     return output_image
 
-def count_and_label_apples(binary_image, original_image):
-    # Apply thresholding
-    ret, thresh = cv2.threshold(binary_image.astype(np.uint8), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    kernel = np.ones((3, 3), np.uint8)
+def calculate_metrics(segmented_image, original_mask):
+    # Flatten the images
+    segmented_flat = segmented_image.flatten()
+    original_flat = original_mask.flatten()
     
-    # Apply morphological opening
-    opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=3)
+    # Calculate accuracy
+    accuracy = accuracy_score(original_flat, segmented_flat)
     
-    # Label the connected components
-    labels = measure.label(opening, background=0)
+    # Calculate mean squared error (MSE)
+    mse = mean_squared_error(original_flat, segmented_flat)
     
-    # Count all unique labels
-    unique_labels = np.unique(labels)
-    num_apples = len(unique_labels) - 1  # Exclude the background label
-    
-    # Display labels on the original image
-    label_overlay = color.label2rgb(labels, image=original_image, bg_label=0, alpha=0.3)
-    
-    return num_apples, label_overlay
-def count_apples(image_path, model_path):
+    return accuracy, mse
 
+def compare_and_evaluate(image_path, mask_path, model_path):
     # Segment the image
     segmented_image = segment_image(image_path, model_path)
     result_image = retain_dark_gray_pixels(segmented_image)
 
-    # Count apples and get labeled overlay image
-    original_image = io.imread(image_path)
-    if original_image.shape[2] == 4:
-        original_image = original_image[:, :, :3]
-    num_apples, labeled_image = count_and_label_apples(result_image, original_image)
+    # Load the original mask
+    original_mask = io.imread(mask_path)
+    if original_mask.shape[2] == 4:
+        original_mask = original_mask[:, :, :3]
+    if len(original_mask.shape) == 3:
+        original_mask = color.rgb2gray(original_mask) * 255
+    original_mask = original_mask.astype(np.uint8)
 
-    print(f'Found {num_apples} apples.')
+    # Calculate accuracy and MSE
+    accuracy, mse = calculate_metrics(result_image, original_mask)
+
+    print(f'Accuracy: {accuracy}')
+    print(f'Mean Squared Error: {mse}')
+
     # Display results
     plt.figure(figsize=(10, 8))
     plt.imshow(segmented_image, cmap='gray')
@@ -92,10 +94,9 @@ def count_apples(image_path, model_path):
     plt.show()
 
     plt.figure(figsize=(10, 8))
-    plt.imshow(labeled_image)
-    plt.title(f'Labeled Apples (Total: {num_apples})')
+    plt.imshow(original_mask, cmap='gray')
+    plt.title('Original Mask')
     plt.axis('off')
     plt.show()
-    return num_apples
 
-count_apples(image_path, model_path)
+compare_and_evaluate(image_path, mask_path, model_path)
