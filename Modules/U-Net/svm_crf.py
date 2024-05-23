@@ -4,6 +4,8 @@ from skimage import io, color, filters, img_as_float, measure
 from sklearn.preprocessing import scale
 from joblib import load
 import cv2
+from pydensecrf import densecrf
+from pydensecrf.utils import unary_from_labels, create_pairwise_gaussian, create_pairwise_bilateral
 
 def apply_gaussian_filter(image, sigma=2):
     """Apply Gaussian filter to the image to reduce noise."""
@@ -63,15 +65,51 @@ def count_and_label_apples(binary_image, original_image):
     
     return num_apples, label_overlay
 
+def apply_crf_to_binary_image(image_path, binary_mask):
+    image = img_as_float(io.imread(image_path))
+    # Convert image to grayscale if it is not already
+    if len(image.shape) > 2:
+        image = color.rgb2gray(image)
+    
+    # Convert image and mask to the correct data types
+    img = (image * 255).astype(np.uint8)
+    binary_mask = (binary_mask / 255).astype(np.uint8)
+
+    # Define the number of labels (2: background and foreground)
+    num_labels = 2
+    
+    # Generate unary potentials
+    labels = binary_mask
+    unary = unary_from_labels(labels, num_labels, gt_prob=0.7, zero_unsure=False)
+
+    # Create DenseCRF object
+    d = densecrf.DenseCRF2D(img.shape[1], img.shape[0], num_labels)
+    d.setUnaryEnergy(unary)
+
+    # Add pairwise Gaussian potentials
+    feats = create_pairwise_gaussian(sdims=(3, 3), shape=img.shape)
+    d.addPairwiseEnergy(feats, compat=3)
+
+    # Add pairwise bilateral potentials
+    img_3ch = np.stack([img]*3, axis=-1)
+    feats = create_pairwise_bilateral(sdims=(4, 4), schan=(10,), img=img_3ch, chdim=2)
+    d.addPairwiseEnergy(feats, compat=10)
+
+    # Perform inference
+    Q = d.inference(20)  # Increase number of iterations for better refinement
+    map_result = np.argmax(Q, axis=0).reshape(img.shape)
+
+    return map_result
+
 def count_apples_svm(image_path, model_path):
 
     # Segment the image
     segmented_image = segment_image(image_path, model_path)
     result_image = retain_dark_gray_pixels(segmented_image)
-
+    crf_refined_mask = apply_crf_to_binary_image(image_path, result_image)
     # Count apples and get labeled overlay image
     original_image = io.imread(image_path)
-    num_apples, labeled_image = count_and_label_apples(result_image, original_image)
+    num_apples, labeled_image = count_and_label_apples(crf_refined_mask, original_image)
     
     return num_apples
 

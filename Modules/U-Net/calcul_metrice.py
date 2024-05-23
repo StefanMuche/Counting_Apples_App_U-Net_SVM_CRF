@@ -9,7 +9,7 @@ T_original = 2940
 
 # Total apples in segmented images
 T_unet = 2609
-T_svm = 3258
+T_svm = 3115
 
 # Calculate TP, FP, FN for U-Net
 TP_unet = T_unet
@@ -27,4 +27,4 @@ print(f"U-Net - Precision: {precision_unet}, Recall: {recall_unet}, F1 Score: {f
 
 # Calculate metrics for SVM
 precision_svm, recall_svm, f1_svm = calculate_metrics(TP_svm, FP_svm, FN_svm)
-print(f"SVM - Precision: {precision_svm}, Recall: {recall_svm}, F1 Score: {f1_svm}")
+print(f"SVM + CRF - Precision: {precision_svm}, Recall: {recall_svm}, F1 Score: {f1_svm}")

@@ -8,6 +8,8 @@ from sklearn.metrics import accuracy_score, mean_squared_error
 from joblib import load
 import torch.nn.functional as F
 import torch
+from pydensecrf import densecrf
+from pydensecrf.utils import unary_from_labels, create_pairwise_gaussian, create_pairwise_bilateral
 
 images_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/images_for_errors_png'
 masks_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/Masks_for_errors'
@@ -55,6 +57,42 @@ def retain_dark_gray_pixels(segmented_image):
 
     return output_image
 
+def apply_crf_to_binary_image(image_path, binary_mask):
+    # Convert image to grayscale if it is not already
+    image = img_as_float(io.imread(image_path))
+    if len(image.shape) > 2:
+        image = color.rgb2gray(image)
+    
+    # Convert image and mask to the correct data types
+    img = (image * 255).astype(np.uint8)
+    binary_mask = (binary_mask / 255).astype(np.uint8)
+
+    # Define the number of labels (2: background and foreground)
+    num_labels = 2
+    
+    # Generate unary potentials
+    labels = binary_mask
+    unary = unary_from_labels(labels, num_labels, gt_prob=0.7, zero_unsure=False)
+
+    # Create DenseCRF object
+    d = densecrf.DenseCRF2D(img.shape[1], img.shape[0], num_labels)
+    d.setUnaryEnergy(unary)
+
+    # Add pairwise Gaussian potentials
+    feats = create_pairwise_gaussian(sdims=(3, 3), shape=img.shape)
+    d.addPairwiseEnergy(feats, compat=3)
+
+    # Add pairwise bilateral potentials
+    img_3ch = np.stack([img]*3, axis=-1)
+    feats = create_pairwise_bilateral(sdims=(4, 4), schan=(10,), img=img_3ch, chdim=2)
+    d.addPairwiseEnergy(feats, compat=10)
+
+    # Perform inference
+    Q = d.inference(20)  # Increase number of iterations for better refinement
+    map_result = np.argmax(Q, axis=0).reshape(img.shape)
+
+    return map_result
+
 def calculate_metrics(segmented_image, original_mask):
     # Flatten the images
     segmented_flat = segmented_image.flatten()
@@ -95,6 +133,7 @@ def process_and_evaluate_all_images(images_dir, masks_dir, model_path):
                 # Segment the image
                 segmented_image = segment_image(image_path, model_path)
                 result_image = retain_dark_gray_pixels(segmented_image)
+                crf_refined_mask = apply_crf_to_binary_image(image_path, result_image)
 
                 # Load and resize the original mask
                 original_mask = io.imread(mask_path)
@@ -105,7 +144,7 @@ def process_and_evaluate_all_images(images_dir, masks_dir, model_path):
                 original_mask = cv2.resize(original_mask.astype(np.uint8), (768, 1024))
 
                 # Calculate metrics
-                accuracy, mse, bce_loss, dice_loss = calculate_metrics(result_image, original_mask)
+                accuracy, mse, bce_loss, dice_loss = calculate_metrics(crf_refined_mask, original_mask)
                 accuracies.append(accuracy)
                 mses.append(mse)
                 bce_losses.append(bce_loss)
