@@ -1,11 +1,19 @@
-import matplotlib.pyplot as plt
+import os
 import numpy as np
+from tqdm import tqdm
+import cv2
 from skimage import io, color, filters, img_as_float, measure
 from sklearn.preprocessing import scale
+from sklearn.metrics import confusion_matrix
 from joblib import load
-import cv2
 from pydensecrf import densecrf
 from pydensecrf.utils import unary_from_labels, create_pairwise_gaussian, create_pairwise_bilateral
+from PIL import Image as PILImage
+
+# Directories
+images_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/images_for_errors_png'
+masks_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/Masks_for_errors'
+model_path = 'D:/Python_VSCode/licenta_v2/Modules/svm_model_rbf_cielab_a_4clusters.joblib'
 
 def apply_gaussian_filter(image, sigma=2):
     """Apply Gaussian filter to the image to reduce noise."""
@@ -29,6 +37,10 @@ def segment_image(image_path, model_path):
     image = img_as_float(io.imread(image_path))
     if image.shape[2] == 4:
         image = image[:, :, :3]
+    
+    # Resize image to 768x1024
+    image = cv2.resize(image, (768, 1024))
+
     features, filtered_image = extract_features(image)
 
     model = load(model_path)
@@ -45,29 +57,9 @@ def retain_dark_gray_pixels(segmented_image):
 
     return output_image
 
-def count_and_label_apples(binary_image, original_image):
-    # Apply thresholding
-    ret, thresh = cv2.threshold(binary_image.astype(np.uint8), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    kernel = np.ones((3, 3), np.uint8)
-    
-    # Apply morphological opening
-    opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=3)
-    
-    # Label the connected components
-    labels = measure.label(opening, background=0)
-    
-    # Count all unique labels
-    unique_labels = np.unique(labels)
-    num_apples = len(unique_labels) - 1  # Exclude the background label
-    
-    # Display labels on the original image
-    label_overlay = color.label2rgb(labels, image=original_image, bg_label=0, alpha=0.3)
-    
-    return num_apples, label_overlay
-
 def apply_crf_to_binary_image(image_path, binary_mask):
-    image = img_as_float(io.imread(image_path))
     # Convert image to grayscale if it is not already
+    image = img_as_float(io.imread(image_path))
     if len(image.shape) > 2:
         image = color.rgb2gray(image)
     
@@ -101,15 +93,43 @@ def apply_crf_to_binary_image(image_path, binary_mask):
 
     return map_result
 
-def count_apples_svm(image_path, model_path):
+confusion_mats_svm = []
+confusion_mats_crf = []
 
-    # Segment the image
+for image_name in tqdm(os.listdir(images_dir)):
+    image_path = os.path.join(images_dir, image_name)
+    mask_path = os.path.join(masks_dir, image_name)
+
+    if not os.path.exists(mask_path):
+        continue
+
+    true_mask = np.array(PILImage.open(mask_path).convert('L')).astype(np.uint8)
+    true_mask = cv2.resize(true_mask, (768, 1024))
+
+    # Segment using SVM
     segmented_image = segment_image(image_path, model_path)
-    result_image = retain_dark_gray_pixels(segmented_image)
-    crf_refined_mask = apply_crf_to_binary_image(image_path, result_image)
-    # Count apples and get labeled overlay image
-    original_image = io.imread(image_path)
-    num_apples, labeled_image = count_and_label_apples(crf_refined_mask, original_image)
-    
-    return num_apples
+    binary_mask_svm = retain_dark_gray_pixels(segmented_image)
 
+    # Refine using CRF
+    refined_mask = apply_crf_to_binary_image(image_path, binary_mask_svm)
+
+    # Calculate confusion matrices
+    conf_mat_svm = confusion_matrix(true_mask.flatten(), binary_mask_svm.flatten(), labels=[0, 255])
+    conf_mat_crf = confusion_matrix(true_mask.flatten(), refined_mask.flatten(), labels=[0, 255])
+
+    # Normalize confusion matrices
+    conf_mat_svm = conf_mat_svm / true_mask.size
+    conf_mat_crf = conf_mat_crf / true_mask.size
+
+    confusion_mats_svm.append(conf_mat_svm)
+    confusion_mats_crf.append(conf_mat_crf)
+
+# Calculate mean confusion matrices
+total_confusion_svm = np.mean(np.array(confusion_mats_svm), axis=0)
+total_confusion_crf = np.mean(np.array(confusion_mats_crf), axis=0)
+
+print("Average Confusion Matrix for SVM:")
+print(total_confusion_svm)
+
+print("Average Confusion Matrix for SVM + CRF:")
+print(total_confusion_crf)

@@ -56,7 +56,7 @@ def up_conv(in_channels, out_channels):
 ######## MODELUL U-NET ##################
 
 class UNet(nn.Module):
-    def __init__(self, pretrained=True, out_channels=12):
+    def __init__(self, pretrained=True, out_channels=1):
         super().__init__()
 
         # Definim blocurile encoderului cu max pooling

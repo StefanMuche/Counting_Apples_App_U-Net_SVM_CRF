@@ -82,7 +82,7 @@ def apply_crf_to_binary_image(image, binary_mask):
     d.addPairwiseEnergy(feats, compat=10)
 
     # Perform inference
-    Q = d.inference(10)  # Increase number of iterations for better refinement
+    Q = d.inference(30)  # Increase number of iterations for better refinement
     map_result = np.argmax(Q, axis=0).reshape(img.shape)
 
     return map_result

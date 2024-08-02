@@ -1,16 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage import io, color, filters, img_as_float, measure
+from skimage.transform import resize
 from sklearn.preprocessing import scale
 from joblib import load
 import cv2
 from pydensecrf import densecrf
 from pydensecrf.utils import unary_from_labels, create_pairwise_gaussian, create_pairwise_bilateral
-
+import os
+from CRF_pathces import demo_crf
+import tqdm
+from crf_fara_patch import demo_crf1
 # File paths
-image_path = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/images_for_errors_png/resized_image_529.png'
+image_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/images_for_errors_png'
 model_path = 'D:/Python_VSCode/licenta_v2/Modules/svm_model_rbf_cielab_a_4clusters.joblib'
-output_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/Labels_SVM+CRF_pydense' 
+output_dir = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/Labels_SVM+CRF_pydense'
+output_file_path = 'D:/Licenta-Segmentarea si numararea automata a fructelor/Datasets/detection/train/apple_counts_crf_manual.txt'
 
 def apply_gaussian_filter(image, sigma=2):
     """Apply Gaussian filter to the image to reduce noise."""
@@ -28,13 +33,13 @@ def extract_features(image):
 
     combined_features = normalized_a_channel.reshape(-1, 1)
 
-    return combined_features
+    return combined_features, filtered_image
 
 def segment_image(image_path, model_path):
     image = img_as_float(io.imread(image_path))
     if image.shape[2] == 4:
         image = image[:, :, :3]
-    features = extract_features(image)
+    features, filtered_image = extract_features(image)
 
     model = load(model_path)
 
@@ -76,25 +81,29 @@ def apply_crf_to_binary_image(image, binary_mask):
 
     # Add pairwise bilateral potentials
     img_3ch = np.stack([img]*3, axis=-1)
-    feats = create_pairwise_bilateral(sdims=(3, 3), schan=(10,), img=img_3ch, chdim=2)
+    feats = create_pairwise_bilateral(sdims=(2, 2), schan=(10,), img=img_3ch, chdim=2)
     d.addPairwiseEnergy(feats, compat=10)
 
     # Perform inference
-    Q = d.inference(60)  # Increase number of iterations for better refinement
+    Q = d.inference(10)  # Increase number of iterations for better refinement
     map_result = np.argmax(Q, axis=0).reshape(img.shape)
 
     return map_result
 
 def count_and_label_apples(binary_image, original_image):
+    # Resize binary_image to match the shape of original_image
+    if binary_image.shape != original_image.shape[:2]:
+        binary_image = resize(binary_image, original_image.shape[:2], anti_aliasing=True)
+
     # Apply thresholding
-    ret, thresh = cv2.threshold(binary_image.astype(np.uint8), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    kernel = np.ones((3, 3), np.uint8)
+    # ret, thresh = cv2.threshold(binary_image.astype(np.uint8), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # kernel = np.ones((3, 3), np.uint8)
     
-    # Apply morphological opening
-    opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=3)
+    # # Apply morphological opening
+    # opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=3)
     
     # Label the connected components
-    labels = measure.label(opening, background=0)
+    labels = measure.label(binary_image, background=0)
     
     # Count all unique labels
     unique_labels = np.unique(labels)
@@ -102,54 +111,42 @@ def count_and_label_apples(binary_image, original_image):
     
     # Display labels on the original image
     label_overlay = color.label2rgb(labels, image=original_image, bg_label=0, alpha=0.3)
+    plt.figure('Labeled Apples (Original Segmentation)')
+    plt.imshow(label_overlay)
+    plt.show()
     
-    return num_apples, label_overlay, opening
+    return num_apples
 
-
-def count_apples_svm(image_path, model_path):
-    # Segment the image
-    segmented_image = segment_image(image_path, model_path)
-    result_image = retain_dark_gray_pixels(segmented_image)
-
-    # Count apples and get labeled overlay image
-    original_image = io.imread(image_path)
-    num_apples, labeled_image = count_and_label_apples(result_image, original_image)
+def process_images(image_dir, model_path, output_dir, output_file_path):
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
     
-    return num_apples, labeled_image
+    with open(output_file_path, 'w') as output_file:
+        # Iterate through all images in the directory
+        for filename in tqdm.tqdm(os.listdir(image_dir)):
+            if filename.endswith('.jpg') or filename.endswith('.png'):
+                image_path = os.path.join(image_dir, filename)
+                
+                # Load image and model
+                image = img_as_float(io.imread(image_path))
+                segmented_image = segment_image(image_path, model_path)
+                binary_mask = retain_dark_gray_pixels(segmented_image)
 
-# Load image and model
-image = img_as_float(io.imread(image_path))
-segmented_image = segment_image(image_path, model_path)
-binary_mask = retain_dark_gray_pixels(segmented_image)
+                # Apply CRF refinement
+                crf_refined_mask = demo_crf(binary_mask)
 
-# Apply CRF refinement
-crf_refined_mask = apply_crf_to_binary_image(image, binary_mask)
+                # Count apples in CRF-refined segmented image
+                num_apples_crf = count_and_label_apples(crf_refined_mask, image)
+                
+                # Save the labeled image
+                # plt.imsave(os.path.join(output_dir, filename), labeled_image_crf)
+                
+                # Write the number of apples to the output file
+                output_file.write(f'{num_apples_crf}\n')
+                output_file.flush()  # Ensure the output is written to the file in real-time
+                
+                # Print the number of apples
+                print(f'{filename}: {num_apples_crf}')
 
-# Count apples in original and CRF-refined segmented images
-num_apples_original, labeled_image_original, mata = count_and_label_apples(binary_mask, image)
-num_apples_crf, labeled_image_crf, opening = count_and_label_apples(crf_refined_mask, image)
-print(f"Numar mere SVM:{num_apples_original} ")
-print(f"Numar mere SVM:{num_apples_crf} ")
-
-# Display results
-plt.figure('Original Image')
-plt.imshow(image)
-plt.title("Original Image")
-
-plt.figure('Binary Mask')
-plt.imshow(binary_mask, cmap='gray')
-plt.title("Binary Mask")
-
-plt.figure('Labeled Apples (Original Segmentation)')
-plt.imshow(labeled_image_original)
-plt.title(f"Labeled Apples (Original Segmentation) - Count: {num_apples_original}")
-
-plt.figure('CRF Refined Mask')
-plt.imshow(opening, cmap='gray')
-plt.title("CRF Refined Mask")
-
-plt.figure('Labeled Apples (CRF Segmentation)')
-plt.imshow(labeled_image_crf)
-plt.title(f"Labeled Apples (CRF Segmentation) - Count: {num_apples_crf}")
-
-plt.show()
+# Run the processing function
+process_images(image_dir, model_path, output_dir, output_file_path)

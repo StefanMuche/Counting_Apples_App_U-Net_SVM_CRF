@@ -88,12 +88,6 @@ def train_svm_on_selected_samples(features, memberships, train_indices):
     model.fit(train_features, train_labels)
     return model
 
-def apply_crf(image, labels):
-    g = graph.pixel_graph(image, labels, mode='similarity')
-    new_labels = graph.cut_normalized(labels, g)
-    new_labels = relabel_sequential(new_labels)[0]
-    return new_labels
-
 print("START FUZZY C-MEANS CLUSTERING...")
 
 features_normalized, memberships = fuzzy_c_means_clustering(all_features)

@@ -1,13 +1,6 @@
 import numpy as np
-from scipy import ndimage as ndi
-from skimage.transform import rescale, resize
-from skimage.data import horse
-from skimage.morphology import dilation
+from skimage import color
 from matplotlib import pyplot as plt
-from time import process_time as clock
-import os
-from skimage import io, color
-from joblib import Parallel, delayed
 
 def unary_potential(patch, label):
     avg_intensity = np.mean(patch)
@@ -18,18 +11,16 @@ def pairwise_potential(label1, label2):
 
 def gen_data_belief(image, labels):
     h, w = image.shape
-    patch_size = 4
-    data_belief = np.zeros((h // patch_size, w // patch_size, len(labels)))
+    data_belief = np.zeros((h, w, len(labels)))
     
-    for i in range(0, h, patch_size):
-        for j in range(0, w, patch_size):
-            patch = image[i:i + patch_size, j:j + patch_size]
-            pi, pj = i // patch_size, j // patch_size
-            data_belief[pi, pj] = [unary_potential(patch, label) for label in labels]
+    for i in range(h):
+        for j in range(w):
+            patch = image[i:i+1, j:j+1]
+            data_belief[i, j] = [unary_potential(patch, label) for label in labels]
     
     return data_belief
 
-def loopy_belief_propagation(data_belief, labels, niter, patch_size=1):
+def loopy_belief_propagation(data_belief, labels, niter):
     b = np.copy(data_belief)
     h, w = data_belief.shape[:2]
 
@@ -49,26 +40,24 @@ def loopy_belief_propagation(data_belief, labels, niter, patch_size=1):
         new_b -= np.min(new_b, axis=2, keepdims=True)
         b = new_b
 
-    return np.argmin(b, axis=2) * patch_size  
+    return np.argmin(b, axis=2)
 
-def demo_crf(img):
+def demo_crf1(img):
     if len(img.shape) > 2:  
         img = color.rgb2gray(img)
 
     labels = [0, 1]
     data_belief = gen_data_belief(img, labels)
-
-    start_time = clock()
-    segmented_image = loopy_belief_propagation(data_belief, labels, niter=10)
-    run_time = clock() - start_time
-
+    segmented_image = loopy_belief_propagation(data_belief, labels, niter=2)
     plt.figure('Original Noisy Image')
     plt.imshow(img, cmap='gray', interpolation='none')
     plt.title("Noisy Image")
     plt.figure('Segmented Image')
     plt.imshow(segmented_image, cmap='gray', interpolation='none')
-    plt.title(f"Segmented Image - Runtime: {run_time:.2f}s")
+    plt.title("Segmented Image")
     plt.show()
+    return segmented_image
 
-# if __name__ == '__main__':
-#     demo_crf()
+# Uncomment the following lines to run the demo with an example image
+# from skimage.data import horse
+# demo_crf(horse())
